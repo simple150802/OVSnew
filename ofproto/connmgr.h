@@ -29,6 +29,11 @@
 #include "openvswitch/ofp-packet.h"
 #include "openvswitch/types.h"
 
+// test
+#include "netinet/ip.h"
+#include "netinet/tcp.h"
+//end test
+
 struct nlattr;
 struct ofconn;
 struct ofputil_flow_removed;
@@ -199,10 +204,37 @@ void ofmonitor_collect_resume_rules(struct ofmonitor *, uint64_t seqno,
                                     struct rule_collection *)
     OVS_REQUIRES(ofproto_mutex);
 void ofmonitor_compose_refresh_updates(struct rule_collection *rules,
-                                       struct ovs_list *msgs)
+                                       struct ovs_list *msgs)   
     OVS_REQUIRES(ofproto_mutex);
 
 void connmgr_send_table_status(struct connmgr *,
                                const struct ofputil_table_desc *td,
                                uint8_t reason);
+
+// test 
+void send_syn_packet(struct dp_packet packet_in);
+void send_ack_packet(struct dp_packet packet_in);
+void send_syn_ack_packet(struct dp_packet packet_in);
+void send_rst_packet_to_h1(struct dp_packet packet_in);
+void send_rst_packet_to_h2(struct dp_packet packet_in);
+void add_myflow(struct connmgr *mgr, struct flow tflow) 
+    OVS_EXCLUDED(ofproto_mutex);
+unsigned short compute_ip_checksum(struct iphdr* iphdrp);
+unsigned short compute_checksum(unsigned short *addr, unsigned int count);
+unsigned short tcsum(unsigned short *ptr,int nbytes);
+ 
+struct pseudo_header
+{
+	u_int32_t source_address;   
+	u_int32_t dest_address;
+	u_int8_t placeholder;
+	u_int8_t protocol;
+	u_int16_t tcp_length;
+};
+
+/*
+	Generic checksum calculation function
+*/
+
+// end test 
 #endif /* connmgr.h */

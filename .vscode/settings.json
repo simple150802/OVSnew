@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "netfilter_ipv6.h": "c",
+        "*.tcc": "c",
+        "fstream": "c"
+    }
+}
