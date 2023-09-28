@@ -482,8 +482,7 @@ OvsExecuteDpIoctl(OvsPacketExecute *execute)
     }
 
     ndisStatus = OvsExtractFlow(pNbl, execute->inPort, &key, &layers,
-                                OvsIphIsZero(&tempTunKey.tunKey.dst)? NULL :
-                                &tempTunKey.tunKey);
+                     tempTunKey.tunKey.dst == 0 ? NULL : &tempTunKey.tunKey);
 
     if (ndisStatus != NDIS_STATUS_SUCCESS) {
         /* Invalid network header */
@@ -848,7 +847,7 @@ OvsCreateAndAddPackets(PVOID userData,
 static __inline UINT32
 OvsGetUpcallMsgSize(PVOID userData,
                     UINT32 userDataLen,
-                    OvsIPTunnelKey *tunnelKey,
+                    OvsIPv4TunnelKey *tunnelKey,
                     UINT32 payload)
 {
     UINT32 size = NLMSG_ALIGN(sizeof(struct ovs_header)) +
@@ -1014,7 +1013,7 @@ OvsCreateQueueNlPacket(PVOID userData,
                        UINT32 cmd,
                        POVS_VPORT_ENTRY vport,
                        OvsFlowKey *key,
-                       OvsIPTunnelKey *tunnelKey,
+                       OvsIPv4TunnelKey *tunnelKey,
                        PNET_BUFFER_LIST nbl,
                        PNET_BUFFER nb,
                        BOOLEAN isRecv,

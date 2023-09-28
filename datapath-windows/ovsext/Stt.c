@@ -46,7 +46,7 @@ static OVS_STT_THREAD_CTX sttDefragThreadCtx;
 
 static NDIS_STATUS
 OvsDoEncapStt(POVS_VPORT_ENTRY vport, PNET_BUFFER_LIST curNbl,
-              const OvsIPTunnelKey *tunKey,
+              const OvsIPv4TunnelKey *tunKey,
               const POVS_FWD_INFO fwdInfo,
               POVS_PACKET_HDR_INFO layers,
               POVS_SWITCH_CONTEXT switchContext,
@@ -104,7 +104,7 @@ OvsCleanupSttTunnel(POVS_VPORT_ENTRY vport)
 NDIS_STATUS
 OvsEncapStt(POVS_VPORT_ENTRY vport,
             PNET_BUFFER_LIST curNbl,
-            OvsIPTunnelKey *tunKey,
+            OvsIPv4TunnelKey *tunKey,
             POVS_SWITCH_CONTEXT switchContext,
             POVS_PACKET_HDR_INFO layers,
             PNET_BUFFER_LIST *newNbl,
@@ -114,13 +114,7 @@ OvsEncapStt(POVS_VPORT_ENTRY vport,
     NDIS_STATUS status;
 
     UNREFERENCED_PARAMETER(switchContext);
-
-    if (tunKey->dst.si_family != AF_INET) {
-        /*V6 tunnel support will be supported later*/
-        return NDIS_STATUS_FAILURE;
-    }
-
-    status = OvsLookupIPhFwdInfo(tunKey->src, tunKey->dst, &fwdInfo);
+    status = OvsLookupIPFwdInfo(tunKey->src, tunKey->dst, &fwdInfo);
     if (status != STATUS_SUCCESS) {
         OvsFwdIPHelperRequest(NULL, 0, tunKey, NULL, NULL, NULL);
         /*
@@ -146,7 +140,7 @@ OvsEncapStt(POVS_VPORT_ENTRY vport,
 NDIS_STATUS
 OvsDoEncapStt(POVS_VPORT_ENTRY vport,
               PNET_BUFFER_LIST curNbl,
-              const OvsIPTunnelKey *tunKey,
+              const OvsIPv4TunnelKey *tunKey,
               const POVS_FWD_INFO fwdInfo,
               POVS_PACKET_HDR_INFO layers,
               POVS_SWITCH_CONTEXT switchContext,
@@ -307,8 +301,8 @@ OvsDoEncapStt(POVS_VPORT_ENTRY vport,
         outerIpHdr->ttl = tunKey->ttl? tunKey->ttl : 64;
         outerIpHdr->protocol = IPPROTO_TCP;
         outerIpHdr->check = 0;
-        outerIpHdr->saddr = fwdInfo->srcIphAddr.Ipv4.sin_addr.s_addr;
-        outerIpHdr->daddr = tunKey->dst.Ipv4.sin_addr.s_addr;
+        outerIpHdr->saddr = fwdInfo->srcIpAddr;
+        outerIpHdr->daddr = tunKey->dst;
 
         /* L4 header */
         RtlZeroMemory(outerTcpHdr, sizeof *outerTcpHdr);
@@ -376,8 +370,8 @@ OvsDoEncapStt(POVS_VPORT_ENTRY vport,
             */
             outerIpHdr->check = IPChecksum((UINT8 *)outerIpHdr,
                 sizeof *outerIpHdr, 0);
-            outerTcpHdr->check = IPPseudoChecksum((UINT32*)&fwdInfo->srcIphAddr.Ipv4.sin_addr.s_addr,
-                (UINT32*)&tunKey->dst.Ipv4.sin_addr.s_addr,
+            outerTcpHdr->check = IPPseudoChecksum(&fwdInfo->srcIpAddr,
+                (uint32 *)&tunKey->dst,
                 IPPROTO_TCP, (uint16)0);
 
             lsoInfo.Value = 0;
@@ -388,8 +382,8 @@ OvsDoEncapStt(POVS_VPORT_ENTRY vport,
             NET_BUFFER_LIST_INFO(curNbl,
                 TcpLargeSendNetBufferListInfo) = lsoInfo.Value;
         } else {
-            outerTcpHdr->check = IPPseudoChecksum((UINT32*)&fwdInfo->srcIphAddr.Ipv4.sin_addr.s_addr,
-                                            (UINT32*)&tunKey->dst.Ipv4.sin_addr.s_addr,
+            outerTcpHdr->check = IPPseudoChecksum(&fwdInfo->srcIpAddr,
+                                            (uint32 *) &tunKey->dst,
                                             IPPROTO_TCP,
                                             (uint16) tcpChksumLen);
         }
@@ -918,7 +912,7 @@ OvsDecapSetOffloads(PNET_BUFFER_LIST *curNbl,
 NDIS_STATUS
 OvsDecapStt(POVS_SWITCH_CONTEXT switchContext,
             PNET_BUFFER_LIST curNbl,
-            OvsIPTunnelKey *tunKey,
+            OvsIPv4TunnelKey *tunKey,
             PNET_BUFFER_LIST *newNbl)
 {
     NDIS_STATUS status;
@@ -930,12 +924,6 @@ OvsDecapStt(POVS_SWITCH_CONTEXT switchContext,
     char *sttBuf[STT_HDR_LEN];
     UINT32 advanceCnt, hdrLen;
     OVS_PACKET_HDR_INFO layers = { 0 };
-
-
-    if (tunKey->dst.si_family != AF_INET) {
-        /*V6 tunnel support will be supported later*/
-        return NDIS_STATUS_FAILURE;
-    }
 
     status = OvsExtractLayers(curNbl, &layers);
     if (status != NDIS_STATUS_SUCCESS) {
@@ -1016,10 +1004,8 @@ OvsDecapStt(POVS_SWITCH_CONTEXT switchContext,
     ASSERT(sttHdr);
 
     /* Initialize the tunnel key */
-    tunKey->dst.Ipv4.sin_addr.s_addr = ipHdr->daddr;
-    tunKey->dst.si_family = AF_INET;
-    tunKey->src.Ipv4.sin_addr.s_addr = ipHdr->saddr;
-    tunKey->src.si_family = AF_INET;
+    tunKey->dst = ipHdr->daddr;
+    tunKey->src = ipHdr->saddr;
     tunKey->tunnelId = sttHdr->key;
     tunKey->flags = OVS_TNL_F_KEY;
     tunKey->tos = ipHdr->tos;

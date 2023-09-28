@@ -205,7 +205,7 @@ OvsInjectPacketThroughActions(PNET_BUFFER_LIST pNbl,
                               OVS_TUNNEL_PENDED_PACKET *packet)
 {
     NTSTATUS status;
-    OvsIPTunnelKey tunKey = {0};
+    OvsIPv4TunnelKey tunnelKey;
     NET_BUFFER *pNb;
     ULONG sendCompleteFlags = 0;
     BOOLEAN dispatch;
@@ -220,7 +220,7 @@ OvsInjectPacketThroughActions(PNET_BUFFER_LIST pNbl,
     ASSERT(gOvsSwitchContext);
 
     /* Fill the tunnel key */
-    status = OvsSlowPathDecapVxlan(pNbl, &tunKey);
+    status = OvsSlowPathDecapVxlan(pNbl, &tunnelKey);
 
     if(!NT_SUCCESS(status)) {
         goto dropit;
@@ -276,7 +276,7 @@ OvsInjectPacketThroughActions(PNET_BUFFER_LIST pNbl,
         SendFlags |= NDIS_SEND_FLAGS_DISPATCH_LEVEL;
 
         vport = OvsFindTunnelVportByDstPortAndType(gOvsSwitchContext,
-                                                   htons(tunKey.dst_port),
+                                                   htons(tunnelKey.dst_port),
                                                    OVS_VPORT_TYPE_VXLAN);
 
         if (vport == NULL){
@@ -288,7 +288,7 @@ OvsInjectPacketThroughActions(PNET_BUFFER_LIST pNbl,
 
         portNo = vport->portNo;
 
-        status = OvsExtractFlow(pNbl, portNo, &key, &layers, &tunKey);
+        status = OvsExtractFlow(pNbl, portNo, &key, &layers, &tunnelKey);
         if (status != NDIS_STATUS_SUCCESS) {
             goto unlockAndDrop;
         }

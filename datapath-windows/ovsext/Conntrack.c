@@ -20,7 +20,6 @@
 #include "PacketParser.h"
 #include "Event.h"
 #include "Conntrack-nat.h"
-#include "IpHelper.h"
 
 #pragma warning(push)
 #pragma warning(disable:4311)
@@ -512,7 +511,7 @@ OvsDetectCtPacket(OvsForwardingContext *fwdCtx,
                  status =
                       OvsExtractFlow(fwdCtx->curNbl, fwdCtx->srcVportNo,
                                      &newFlowKey, &fwdCtx->layers,
-                                     !OvsIphIsZero(&(fwdCtx->tunKey.dst)) ? &(fwdCtx->tunKey) : NULL);
+                                     fwdCtx->tunKey.dst != 0 ? &fwdCtx->tunKey : NULL);
                 if (status != NDIS_STATUS_SUCCESS) {
                      OVS_LOG_ERROR("Extract flow failed Nbl %p", fwdCtx->curNbl);
                      return status;

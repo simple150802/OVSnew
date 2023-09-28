@@ -62,11 +62,11 @@ NTSTATUS OvsCleanupVxlanTunnel(PIRP irp,
                                PVOID tunnelContext);
 
 NDIS_STATUS OvsSlowPathDecapVxlan(const PNET_BUFFER_LIST packet,
-                                  OvsIPTunnelKey *tunnelKey);
+                                  OvsIPv4TunnelKey *tunnelKey);
 
 NDIS_STATUS OvsEncapVxlan(POVS_VPORT_ENTRY vport,
                           PNET_BUFFER_LIST curNbl,
-                          OvsIPTunnelKey *tunKey,
+                          OvsIPv4TunnelKey *tunKey,
                           POVS_SWITCH_CONTEXT switchContext,
                           POVS_PACKET_HDR_INFO layers,
                           PNET_BUFFER_LIST *newNbl,
@@ -74,15 +74,15 @@ NDIS_STATUS OvsEncapVxlan(POVS_VPORT_ENTRY vport,
 
 NDIS_STATUS OvsDecapVxlan(POVS_SWITCH_CONTEXT switchContext,
                           PNET_BUFFER_LIST curNbl,
-                          OvsIPTunnelKey *tunKey,
+                          OvsIPv4TunnelKey *tunKey,
                           PNET_BUFFER_LIST *newNbl);
 
 static __inline UINT32
-OvsGetVxlanTunHdrSize(BOOLEAN isIpv4)
+OvsGetVxlanTunHdrSize(VOID)
 {
     /* XXX: Can L2 include VLAN at all? */
-    return sizeof(EthHdr) + (isIpv4 ? sizeof(IPHdr) : sizeof(IPv6Hdr)) +
-           sizeof (UDPHdr) + sizeof (VXLANHdr);
+    return sizeof (EthHdr) + sizeof (IPHdr) + sizeof (UDPHdr) +
+           sizeof (VXLANHdr);
 }
 
 static __inline UINT32

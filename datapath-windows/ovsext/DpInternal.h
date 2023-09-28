@@ -137,7 +137,7 @@ typedef struct L2Key {
 #define NUM_PKT_ATTR_REQUIRED 35
 #define TUN_OPT_MAX_LEN 255
 
-typedef union OvsIPTunnelKey {
+typedef union OvsIPv4TunnelKey {
     /* Options should always be the first member of tunnel key.
      * They are stored at the end of the array if they are less than the
      * maximum size. This allows us to get the benefits of variable length
@@ -146,9 +146,8 @@ typedef union OvsIPTunnelKey {
     struct {
         UINT8 tunOpts[TUN_OPT_MAX_LEN];          /* Tunnel options. */
         UINT8 tunOptLen;             /* Tunnel option length in byte. */
-
-        SOCKADDR_INET dst;     /* IPv4/6 destination address. */
-        SOCKADDR_INET src;     /* IPv4/6 source address. */
+        ovs_be32 dst;
+        ovs_be32 src;
         ovs_be64 tunnelId;
         uint16_t flags;
         uint8_t  tos;
@@ -162,24 +161,24 @@ typedef union OvsIPTunnelKey {
         };
     };
     uint64_t attr[NUM_PKT_ATTR_REQUIRED];
-} OvsIPTunnelKey; /* Size of 280+40-8= 312 byte. */
+} OvsIPv4TunnelKey; /* Size of 280 byte. */
 
 static __inline uint8_t
-IPTunnelKeyGetOptionsOffset(const OvsIPTunnelKey *key)
+TunnelKeyGetOptionsOffset(const OvsIPv4TunnelKey *key)
 {
     return TUN_OPT_MAX_LEN - key->tunOptLen;
 }
 
 static __inline uint8_t *
-IPTunnelKeyGetOptions(OvsIPTunnelKey *key)
+TunnelKeyGetOptions(OvsIPv4TunnelKey *key)
 {
-    return key->tunOpts + IPTunnelKeyGetOptionsOffset(key);
+    return key->tunOpts + TunnelKeyGetOptionsOffset(key);
 }
 
 static __inline uint16_t
-IPTunnelKeyGetRealSize(OvsIPTunnelKey *key)
+TunnelKeyGetRealSize(OvsIPv4TunnelKey *key)
 {
-    return sizeof(OvsIPTunnelKey) - IPTunnelKeyGetOptionsOffset(key);
+    return sizeof(OvsIPv4TunnelKey) - TunnelKeyGetOptionsOffset(key);
 }
 
 typedef struct MplsKey {
@@ -188,7 +187,7 @@ typedef struct MplsKey {
 } MplsKey; /* Size of 8 bytes. */
 
 typedef __declspec(align(8)) struct OvsFlowKey {
-    OvsIPTunnelKey tunKey;     /* 280 bytes? */
+    OvsIPv4TunnelKey tunKey;     /* 280 bytes */
     L2Key l2;                    /* 32 bytes */
     union {
         /* These headers are mutually exclusive. */
@@ -210,7 +209,7 @@ typedef __declspec(align(8)) struct OvsFlowKey {
     } ct;                        /* Connection Tracking Flags */
 } OvsFlowKey;
 
-#define OVS_WIN_IP_TUNNEL_KEY_SIZE (sizeof (OvsIPTunnelKey))
+#define OVS_WIN_TUNNEL_KEY_SIZE (sizeof (OvsIPv4TunnelKey))
 #define OVS_L2_KEY_SIZE (sizeof (L2Key))
 #define OVS_IP_KEY_SIZE (sizeof (IpKey))
 #define OVS_IPV6_KEY_SIZE (sizeof (Ipv6Key))
@@ -296,7 +295,7 @@ typedef struct _OVS_PACKET_INFO {
     uint32_t queue;
     uint32_t inPort;
     uint32_t cmd;
-    OvsIPTunnelKey tunnelKey;
+    OvsIPv4TunnelKey tunnelKey;
     uint8_t *payload;
     /* Includes user data defined as chain of netlink attributes followed by the
      * packet data. */
